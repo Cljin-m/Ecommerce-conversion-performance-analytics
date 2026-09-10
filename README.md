@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="assets/banner.svg" alt="Argos — E-Commerce Marketing Analysis"/>
-</p>
-
-# Argos E-Commerce Marketing Analysis — Corrected & Reproducible Edition
+# Argos-营销转化与经营绩效分析
 
 An end-to-end e-commerce business analysis covering January 2020 to June 2024. This corrected edition preserves the original raw data and project intent while repairing data-quality handling, cohort maturity logic, RFM segmentation reproducibility, funnel terminology, report consistency, and notebook portability.
 
