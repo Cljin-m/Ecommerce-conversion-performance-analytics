@@ -1,94 +1,102 @@
-# Argos-营销转化与经营绩效分析
+# Argos 电商转化与经营绩效分析
 
-An end-to-end e-commerce business analysis covering January 2020 to June 2024. This corrected edition preserves the original raw data and project intent while repairing data-quality handling, cohort maturity logic, RFM segmentation reproducibility, funnel terminology, report consistency, and notebook portability.
+本仓库展示一个电商经营分析报告，分析周期覆盖 **2020-01 至 2024-06**。当前仓库版本主要提供 ECharts 交互版 HTML 报告，用于展示转化漏斗、渠道与设备表现、客户复购、RFM 分层、折扣与毛利质量等分析结果。
 
-## 1. Business Questions
+> 说明：本 README 根据仓库中现有 `README.md` 原始内容和 `docs/index.html` 报告整理。当前仓库未包含原始 CSV、SQL 脚本、Notebook、Power BI 文件或 Python 重建脚本，因此不将本仓库描述为可完整复现的数据工程项目。
 
-The project addresses six questions:
+## 1. 分析问题
 
-1. Is revenue growing, stable, or declining?
-2. Where does the purchase funnel lose the most sessions at each **specific stage**?
-3. How do acquisition source and device differ in conversion and order value?
-4. How quickly do purchasing customers return after their first order?
-5. Which customer segments account for the largest share of historical revenue?
-6. How do discount depth and category mix affect estimated merchandise gross margin?
+项目围绕 6 个业务问题展开：
 
-## 2. Data Scope
+1. 收入在分析周期内是增长、稳定还是下降？
+2. 购买漏斗在哪些具体阶段流失最多？
+3. 不同获客渠道和设备在转化率与客单表现上有何差异？
+4. 首次购买客户在后续月份的复购速度如何？
+5. 哪些客户分层贡献了主要历史收入？
+6. 折扣深度和品类结构如何影响估算商品毛利率？
 
-- Analysis period: **2020-01 to 2024-06**
-- Customers: **20,000**
-- Sessions: **92,369**
-- Events: **584,805**
-- Completed orders: **25,716**
-- Purchasing customers: **14,505**
-- Products: **1,197**
-- Completed-order revenue: **£2,711,160.44**
+## 2. 数据范围
 
-Raw source files remain unchanged under `data/raw/`.
+原 README 中记录的分析口径如下：
 
-## 3. Data-Quality Corrections
+- 分析周期：**2020-01 至 2024-06**
+- 客户数：**20,000**
+- 会话数：**92,369**
+- 事件数：**584,805**
+- 已完成订单数：**25,716**
+- 购买客户数：**14,505**
+- 商品数：**1,197**
+- 已完成订单收入：**£2,711,160.44**
 
-### 3.1 `order_items` relationship integrity
+当前仓库未提供原始数据文件，因此以上数据范围作为报告口径说明，不代表仓库内包含完整数据源。
 
-The raw `order_items.csv` contains **59,163 rows**, but **13,871 rows across 7,864 order IDs do not match the completed `orders` table**. Those unmatched rows are not treated as completed-order revenue or profit.
+## 3. 数据质量与口径修正
 
-Corrected treatment:
+### 3.1 `order_items` 关系完整性
 
-- `data/outputs/order_items_clean.csv`: **45,292 item rows linked to completed orders**.
-- `data/quality/order_items_unmatched.csv`: unmatched rows retained for audit rather than deleted.
-- `data/quality/order_item_subtotal_reconciliation.csv`: order-level subtotal reconciliation.
+原说明记录：`order_items.csv` 包含 **59,163 行**，其中 **13,871 行、涉及 7,864 个 order_id** 无法匹配到已完成订单表。这部分未匹配明细不计入已完成订单收入或利润。
 
-### 3.2 Exact-looking line-item duplicates are preserved
+修正口径包括：
 
-There are 73 extra rows that look identical across the available item columns. The raw source has no `line_item_id`, and removing these rows breaks reconciliation to `orders.subtotal_gbp`. Therefore the corrected pipeline **does not automatically deduplicate them**.
+- `order_items_clean.csv`：保留 **45,292 行**可关联到已完成订单的明细。
+- `order_items_unmatched.csv`：保留未匹配明细用于审计。
+- `order_item_subtotal_reconciliation.csv`：用于订单级小计核对。
 
-Completed-order item subtotal: approximately **£2,917,451.25**  
-Completed-order `orders.subtotal_gbp`: approximately **£2,917,448.10**  
-Difference: **£3.15**, consistent with line-level rounding.
+上述 CSV 文件当前未包含在本仓库中，仅作为报告口径说明。
 
-### 3.3 Revenue and profit are reconciled to the order ledger
+### 3.2 保留疑似重复明细行
 
-For item/category analysis, each completed order's `total_gbp` is allocated across its item rows in proportion to each line's share of the order item subtotal. This guarantees that item-level allocated revenue reconciles to completed-order revenue.
+报告说明中存在 73 行在可用字段上看似完全重复的商品明细。由于原始数据没有 `line_item_id`，且删除这些行会破坏与 `orders.subtotal_gbp` 的对账关系，因此修正流程没有自动去重。
 
-- Completed-order revenue: **£2,711,160.44**
-- Allocated item revenue: **£2,711,160.44**
-- Estimated merchandise gross profit: **£828,539.36**
-- Estimated merchandise gross margin: **30.56%**
+对账结果：
 
-The gross-profit metric is a merchandise estimate based on product cost and excludes fulfilment, marketing, tax, refunds, and other operating costs.
+- 已完成订单商品明细小计：约 **£2,917,451.25**
+- 已完成订单 `orders.subtotal_gbp`：约 **£2,917,448.10**
+- 差异：**£3.15**，与行级四舍五入误差一致
 
-## 4. Analytical Corrections
+### 3.3 收入与利润对齐订单账本
 
-### Cohort analysis
+品类和商品明细分析中，每个已完成订单的 `total_gbp` 按商品明细小计占比分摊到各行，确保商品层级分摊收入与订单层级收入一致。
 
-The original logic averaged immature cohorts as if unobserved future periods were zero. The corrected outputs:
+- 已完成订单收入：**£2,711,160.44**
+- 商品明细分摊收入：**£2,711,160.44**
+- 估算商品毛利：**£828,539.36**
+- 估算商品毛利率：**30.56%**
 
-- keep observed zeroes as zero;
-- keep future/unobserved periods missing;
-- include a cohort at M1/M3/M6/M12 only if that horizon is observable.
+毛利指标是基于商品成本的估算值，不包含履约、营销、税费、退款及其他运营成本。
 
-Maturity-adjusted cumulative repeat-purchase incidence:
+## 4. 分析方法修正
 
-| Checkpoint | Average | Eligible cohorts |
-|---|---:|---:|
+### Cohort Analysis
+
+原逻辑将尚未成熟的 cohort 未来月份视为 0 参与平均。修正后的口径为：
+
+- 已观察到的 0 保留为 0；
+- 未来尚未观测月份保留为空；
+- 只有当 M1、M3、M6、M12 已可观测时，该 cohort 才进入对应 checkpoint 平均。
+
+成熟度调整后的累计复购发生率：
+
+| Checkpoint | 平均值 | 可观测 cohort 数 |
+| --- | ---: | ---: |
 | M1 | 2.18% | 53 |
 | M3 | 6.89% | 51 |
 | M6 | 13.26% | 48 |
 | M12 | 24.47% | 42 |
 
-### RFM analysis
+### RFM Analysis
 
-The corrected RFM implementation:
+修正后的 RFM 口径：
 
-- uses a fixed analysis cutoff of **2024-06-30**;
-- uses deterministic quintile ordering with `customer_id` as the tie-breaker;
-- assigns score 5 to better Recency/Frequency/Monetary rank;
-- evaluates `New Customers` before `Potential Loyalists`, making the former reachable;
+- 使用固定分析截止日：**2024-06-30**；
+- 使用 `customer_id` 作为并列值排序的 tie-breaker，保证分层结果可复现；
+- Recency、Frequency、Monetary 均按“更优表现得 5 分”的方向打分；
+- 先判断 `New Customers`，再判断 `Potential Loyalists`，避免新客户分层不可达。
 
-Corrected segment summary:
+修正后的客户分层汇总：
 
-| Segment | Customers | Customer share | Revenue share |
-|---|---:|---:|---:|
+| 分层 | 客户数 | 客户占比 | 收入占比 |
+| --- | ---: | ---: | ---: |
 | Loyal Customers | 3,653 | 25.18% | 38.13% |
 | Lost | 6,016 | 41.48% | 24.12% |
 | Champions | 1,182 | 8.15% | 17.14% |
@@ -97,138 +105,98 @@ Corrected segment summary:
 | Potential Loyalists | 1,036 | 7.14% | 2.63% |
 | New Customers | 214 | 1.48% | 0.33% |
 
-Champions + Loyal Customers account for **33.33% of purchasing customers and 55.27% of revenue**.
+`Champions` 与 `Loyal Customers` 合计占购买客户的 **33.33%**，贡献 **55.27%** 的收入。
 
-### Funnel terminology
+### Funnel Terminology
 
-The historical `cart_abandonment_pct` field is retained for compatibility, but it is explicitly documented as the **share of add-to-cart sessions that do not ultimately purchase**, which spans more than one stage.
+历史字段 `cart_abandonment_pct` 被保留用于兼容，但报告明确其含义是“加购会话中最终未购买的比例”，它跨越了不止一个漏斗阶段。
 
-The corrected outputs also expose precise stage metrics:
+修正后的具体阶段指标：
 
-- Add-to-cart → checkout conversion: **54.93%**
-- Add-to-cart → checkout drop-off: **45.07%**
-- Checkout → purchase conversion: **74.73%**
-- Checkout abandonment: **25.27%**
-- Overall session → purchase CVR: **27.84%**
+- Add-to-cart → checkout 转化率：**54.93%**
+- Add-to-cart → checkout 流失率：**45.07%**
+- Checkout → purchase 转化率：**74.73%**
+- Checkout abandonment：**25.27%**
+- Session → purchase 整体 CVR：**27.84%**
 
-## 5. Corrected Business Findings
+## 5. 核心业务发现
 
-### Growth
+### 收入增长
 
-The business is stable rather than trend-growing over the analysis window.
+报告结论认为，该业务在分析窗口内整体更接近稳定，而不是趋势性增长。
 
-- First 12 months average revenue: approximately **£49,315/month**
-- Last 12 months average revenue: approximately **£49,628/month**
-- Change: **+0.64%**
-- Monthly revenue linear-trend R²: approximately **0.002**
+- 前 12 个月平均收入：约 **£49,315 / 月**
+- 后 12 个月平均收入：约 **£49,628 / 月**
+- 变化：**+0.64%**
+- 月收入线性趋势 R²：约 **0.002**
 
-Order count and AOV are also broadly unchanged between the first and last 12 months.
+订单量和 AOV 在前后 12 个月之间也基本稳定。
 
-### Channel and device
+### 渠道与设备
 
-- Referral has the highest session purchase CVR at **28.64%**.
-- Referral also has the highest maturity-adjusted M6 cumulative repeat-purchase rate at **14.42%**.
-- Email has the lowest M6 rate at **11.39%**.
-- Desktop, Tablet, and Mobile purchase CVR differ by only **0.17 percentage points**, so the data does not support a broad device-level conversion problem.
+- Referral 的会话购买 CVR 最高，为 **28.64%**。
+- Referral 的成熟度调整 M6 累计复购率也最高，为 **14.42%**。
+- Email 的 M6 复购率最低，为 **11.39%**。
+- Desktop、Tablet、Mobile 的购买 CVR 差异仅 **0.17 个百分点**，当前数据不支持“设备层面存在广泛转化问题”的判断。
 
-These are descriptive associations. The dataset contains no media cost or controlled experiment, so channel ROI and causal performance are not inferred.
+这些结果是描述性关联。数据集中没有媒体成本或受控实验，因此不推断渠道 ROI 或因果效果。
 
-### Customer value
+### 客户价值
 
-- Overall repeat-purchase rate: **51.13%**.
-- One-time purchasing customers: **7,089**.
-- Cannot Lose Them contains **669** customers with approximately **£391.68 average historical revenue** and **1,026 days average recency**. This makes it a reasonable reactivation **test group**, not a proven highest-ROI segment.
+- 总体复购率：**51.13%**
+- 一次性购买客户：**7,089**
+- `Cannot Lose Them` 分层包含 **669 名客户**，平均历史收入约 **£391.68**，平均 Recency 为 **1,026 天**。该分层适合作为召回测试组，但不能直接证明其是最高 ROI 客群。
 
-### Discount and profit quality
+### 折扣与利润质量
 
-- **57.59%** of completed orders have a discount.
-- Estimated merchandise gross margin falls from **35.64% at 0% discount** to **19.24% at 20% discount**.
-- 20% discount orders account for **14.29% of orders** but only **7.55% of estimated merchandise gross profit**.
+- **57.59%** 的已完成订单使用了折扣。
+- 估算商品毛利率从 **0% 折扣时的 35.64%** 降至 **20% 折扣时的 19.24%**。
+- 20% 折扣订单占订单数的 **14.29%**，但仅贡献 **7.55%** 的估算商品毛利。
 
-This establishes margin compression, but the data does not prove whether discounts create enough incremental demand to offset it.
+该结果说明折扣会压缩毛利，但当前数据不能证明折扣是否带来了足够的增量需求来抵消利润损失。
 
-## 6. Project Structure
+## 6. 当前仓库结构
 
 ```text
-Argos-Ecommerce-Marketing-Analysis-main/
+Ecommerce-conversion-performance-analytics/
 ├── README.md
-├── requirements.txt
-├── assets/
-├── data/
-│   ├── raw/                       # untouched source CSV files
-│   ├── outputs/                   # regenerated corrected analytical outputs
-│   └── quality/                   # audit, quarantine and reconciliation files
-├── sql/
-│   ├── 01_setup_and_base_tables.sql
-│   ├── 02_funnel.sql
-│   ├── 03_cohort.sql
-│   ├── 04_rfm.sql
-│   └── 05_profitability.sql
-├── notebooks/
-│   ├── 01_etl_and_setup.ipynb
-│   ├── 02_funnel_analysis.ipynb
-│   ├── 03_cohort_retention.ipynb
-│   └── 04_rfm_segmentation.ipynb
-├── tools/
-│   ├── rebuild_corrected_outputs.py
-│   ├── validate_corrected_project.py
-│   └── render_professional_report.py
-├── powerbi/                       # original PBIX; refresh from corrected outputs
-├── docs/                          # original PDF retained as a legacy snapshot
-└── Argos_Ecommerce_Professional_Analysis_Report_ChartOptimized.html
+└── docs/
+    ├── index.html
+    └── assets/
+        └── vendor/
+            └── echarts.min.js
 ```
 
-## 7. Reproduce the Corrected Project
+## 7. 如何查看报告
 
-### Python-first reproducible workflow
+当前仓库提供的是静态 HTML 报告。可通过以下方式查看：
 
-```bash
-python -m pip install -r requirements.txt
-python tools/rebuild_corrected_outputs.py
-python tools/validate_corrected_project.py
-python tools/render_professional_report.py --project-root .
-python tools/validate_corrected_project.py
+1. 在 GitHub 仓库中打开 `docs/index.html` 查看源码。
+2. 若已启用 GitHub Pages，可访问仓库的 Pages 地址查看交互版报告。
+3. 本地查看时，直接用浏览器打开：
+
+```text
+docs/index.html
 ```
 
-The rebuild command regenerates the analytical CSV outputs directly from `data/raw/`; the renderer then creates the final HTML from the corrected project outputs. The final validation command checks only `data/outputs/` and the generated HTML, so no duplicate portfolio evidence directory is required.
+## 8. 当前仓库未包含的内容
 
-### MySQL workflow
+以下内容在原 README 中被提及，但当前仓库文件结构中不存在：
 
-Run in order:
+- `data/raw/`
+- `data/outputs/`
+- `data/quality/`
+- `sql/`
+- `notebooks/`
+- `tools/`
+- `powerbi/`
+- `requirements.txt`
+- Python 重建与验证脚本
+- Power BI 文件
 
-1. `sql/01_setup_and_base_tables.sql`
-2. `sql/02_funnel.sql`
-3. `sql/03_cohort.sql`
-4. `sql/04_rfm.sql`
-5. `sql/05_profitability.sql`
+因此，本仓库当前更适合作为“电商经营分析 HTML 报告展示仓库”，而不是完整的可复现数据工程项目仓库。
 
-The SQL scripts implement the same corrected methodology for users who want the database workflow.
+## 9. 口径说明
 
-### Notebooks
+本报告中的建议在缺少因果实验、广告成本和增量转化证据时，均应理解为分析假设或后续实验方向，而不是已验证的业务收益。
 
-The notebooks now use project-relative paths rather than a hard-coded local Windows directory. Run them after rebuilding `data/outputs/`.
-
-### Power BI
-
-`powerbi/Argos_BI_Report.pbix` is the original project file. Refresh its sources against the corrected `data/outputs/` folder before using its values. The committed screenshot and original PDF are legacy snapshots and may display pre-correction figures; the corrected HTML report is the authoritative rendered report in this package.
-
-## 8. Validation and Audit Files
-
-- `data/quality/data_quality_audit.csv`
-- `data/quality/data_quality_summary.json`
-- `data/quality/order_items_unmatched.csv`
-- `data/quality/order_item_subtotal_reconciliation.csv`
-- `data/quality/validation_summary.json`
-
-These files make the major data-quality decisions reviewable rather than implicit.
-
-## Author
-
-**Utkarsh Pandey**  
-Data Analyst
-
----
-
-### Correction note
-
-This edition was rebuilt so that conclusions are constrained by the project data and calculation logic. Recommendations in the report are framed as hypotheses or experiments where the dataset does not contain causal evidence, campaign cost, or incremental lift.
