@@ -175,7 +175,7 @@ Ecommerce-conversion-performance-analytics/
 3. 本地查看时，直接用浏览器打开：
 
 ```text
-docs/index.html
+[docs/index.html](https://cljin-m.github.io/Ecommerce-conversion-performance-analytics/)
 ```
 
 ## 8. 当前仓库未包含的内容
